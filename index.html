@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Item Analysis — Mark Entry</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root {
+    --bg: #f0ede8;
+    --surface: #ffffff;
+    --surface2: #f7f5f2;
+    --border: #e0dbd4;
+    --text: #1a1814;
+    --text2: #6b6560;
+    --text3: #9e9890;
+    --accent: #1a4f8a;
+    --accent-light: #e8f0fa;
+    --accent-mid: #3b72b8;
+    --success: #0f6e56;
+    --success-light: #e1f5ee;
+    --warn: #8a4f00;
+    --warn-light: #fef3e2;
+    --danger: #8a1f1f;
+    --danger-light: #fdeaea;
+    --radius: 10px;
+    --radius-sm: 6px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 24px 16px 60px;
+  }
+
+  .app {
+    max-width: 560px;
+    margin: 0 auto;
+  }
+
+  /* Header */
+  .header {
+    margin-bottom: 28px;
+  }
+  .header-badge {
+    display: inline-block;
+    background: var(--accent);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border-radius: 4px;
+    margin-bottom: 10px;
+  }
+  .header h1 {
+    font-size: 26px;
+    font-weight: 600;
+    line-height: 1.2;
+    color: var(--text);
+    margin-bottom: 6px;
+  }
+  .header p {
+    font-size: 14px;
+    color: var(--text2);
+    line-height: 1.5;
+  }
+
+  /* Card */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 14px;
+  }
+  .card-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 10px;
+  }
+
+  /* Text inputs */
+  .field-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .field label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text2);
+    margin-bottom: 6px;
+  }
+  .field input {
+    width: 100%;
+    padding: 10px 13px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    color: var(--text);
+    background: var(--surface2);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .field input:focus { border-color: var(--accent-mid); background: #fff; }
+
+  /* Question block */
+  .qblock {
+    margin-bottom: 16px;
+  }
+  .qblock:last-child { margin-bottom: 0; }
+
+  .q-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  .q-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .q-max {
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--text3);
+    font-family: 'DM Mono', monospace;
+  }
+  .q-selected {
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--accent);
+    min-width: 32px;
+    text-align: right;
+  }
+  .q-selected.empty { color: var(--text3); }
+
+  /* Choice buttons */
+  .choices {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .choice-btn {
+    padding: 7px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface2);
+    color: var(--text2);
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.12s;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .choice-btn:hover { border-color: var(--accent-mid); color: var(--accent); background: var(--accent-light); }
+  .choice-btn.selected {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+  .choice-btn.invalid {
+    border-color: var(--danger);
+    background: var(--danger-light);
+    animation: shake 0.3s ease;
+  }
+
+  @keyframes shake {
+    0%,100% { transform: translateX(0); }
+    25% { transform: translateX(-4px); }
+    75% { transform: translateX(4px); }
+  }
+
+  /* Divider */
+  .section-divider {
+    height: 1px;
+    background: var(--border);
+    margin: 16px 0;
+  }
+
+  /* Total bar */
+  .total-card {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+    margin-bottom: 14px;
+    position: sticky;
+    bottom: 16px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+  }
+  .total-top {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .total-label {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text3);
+  }
+  .total-value {
+    font-family: 'DM Mono', monospace;
+    font-size: 28px;
+    font-weight: 500;
+    color: var(--text);
+    line-height: 1;
+    transition: color 0.2s;
+  }
+  .total-value .denom {
+    font-size: 16px;
+    color: var(--text3);
+  }
+  .total-value.complete { color: var(--success); }
+  .total-value.partial { color: var(--accent); }
+
+  /* Progress bar */
+  .progress-track {
+    height: 5px;
+    background: var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 10px;
+  }
+  .progress-fill {
+    height: 100%;
+    border-radius: 3px;
+    background: var(--accent-mid);
+    transition: width 0.25s ease, background 0.25s;
+    width: 0%;
+  }
+  .progress-fill.complete { background: var(--success); }
+
+  /* Feedback message */
+  .feedback {
+    font-size: 13px;
+    line-height: 1.45;
+    padding: 10px 13px;
+    border-radius: var(--radius-sm);
+    display: none;
+  }
+  .feedback.show { display: block; }
+  .feedback.good { background: var(--success-light); color: var(--success); }
+  .feedback.warn { background: var(--warn-light); color: var(--warn); }
+  .feedback.incomplete { background: var(--accent-light); color: var(--accent); }
+
+  /* Answered count */
+  .answered-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 12px;
+    color: var(--text3);
+    margin-bottom: 6px;
+  }
+  .answered-dots {
+    display: flex;
+    gap: 3px;
+  }
+  .dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--border);
+    transition: background 0.15s;
+  }
+  .dot.filled { background: var(--accent-mid); }
+  .dot.filled.complete { background: var(--success); }
+
+  /* Submit button */
+  .submit-btn {
+    width: 100%;
+    padding: 14px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+    letter-spacing: 0.01em;
+  }
+  .submit-btn:hover { background: var(--accent-mid); }
+  .submit-btn:active { transform: scale(0.99); }
+  .submit-btn:disabled { background: var(--border); color: var(--text3); cursor: not-allowed; transform: none; }
+
+  /* Success screen */
+  .success-screen {
+    display: none;
+    text-align: center;
+    padding: 40px 20px;
+  }
+  .success-screen.show { display: block; }
+  .success-icon {
+    width: 64px;
+    height: 64px;
+    background: var(--success-light);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 20px;
+    font-size: 28px;
+  }
+  .success-screen h2 {
+    font-size: 22px;
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+  .success-screen p {
+    font-size: 14px;
+    color: var(--text2);
+    line-height: 1.5;
+    margin-bottom: 24px;
+  }
+  .score-display {
+    display: inline-block;
+    background: var(--success-light);
+    border: 1.5px solid #9FE1CB;
+    border-radius: var(--radius);
+    padding: 16px 32px;
+    margin-bottom: 24px;
+  }
+  .score-display .score-num {
+    font-family: 'DM Mono', monospace;
+    font-size: 42px;
+    font-weight: 500;
+    color: var(--success);
+    line-height: 1;
+  }
+  .score-display .score-denom {
+    font-size: 14px;
+    color: var(--text2);
+    margin-top: 4px;
+  }
+  .again-btn {
+    display: inline-block;
+    padding: 11px 28px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text2);
+    cursor: pointer;
+    background: transparent;
+    transition: border-color 0.15s, color 0.15s;
+  }
+  .again-btn:hover { border-color: var(--accent-mid); color: var(--accent); }
+
+  /* Teacher panel toggle */
+  .teacher-toggle {
+    text-align: center;
+    margin-top: 32px;
+  }
+  .teacher-toggle button {
+    font-size: 12px;
+    color: var(--text3);
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  /* Teacher panel */
+  .teacher-panel {
+    display: none;
+    margin-top: 16px;
+  }
+  .teacher-panel.show { display: block; }
+  .teacher-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+  }
+  .teacher-header h2 {
+    font-size: 16px;
+    font-weight: 600;
+  }
+  .t-actions {
+    display: flex;
+    gap: 8px;
+  }
+  .t-btn {
+    padding: 7px 13px;
+    border-radius: var(--radius-sm);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text2);
+    transition: all 0.12s;
+  }
+  .t-btn:hover { border-color: var(--accent-mid); color: var(--accent); }
+  .t-btn.primary {
+    background: var(--success);
+    border-color: var(--success);
+    color: #fff;
+  }
+  .t-btn.primary:hover { opacity: 0.9; }
+  .t-btn.danger { border-color: #daa; color: var(--danger); }
+  .t-btn.danger:hover { background: var(--danger-light); }
+
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .stat-box {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 12px;
+    text-align: center;
+  }
+  .stat-box .n {
+    font-family: 'DM Mono', monospace;
+    font-size: 20px;
+    font-weight: 500;
+    color: var(--accent);
+  }
+  .stat-box .l {
+    font-size: 11px;
+    color: var(--text3);
+    margin-top: 2px;
+  }
+
+  .entries-table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    margin-bottom: 12px;
+    max-height: 280px;
+    overflow-y: auto;
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th {
+    background: var(--surface2);
+    padding: 7px 9px;
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+    font-weight: 600;
+    color: var(--text2);
+    white-space: nowrap;
+    position: sticky;
+    top: 0;
+  }
+  td {
+    padding: 6px 9px;
+    border-bottom: 1px solid var(--border);
+    text-align: center;
+    white-space: nowrap;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+  }
+  td:first-child, td:nth-child(2) { font-family: 'DM Sans', sans-serif; font-size: 12px; text-align: left; }
+  tr:last-child td { border-bottom: none; }
+  tr:nth-child(even) td { background: var(--surface2); }
+  .total-td { font-weight: 600; color: var(--accent); }
+  .empty-state { text-align: center; padding: 28px; color: var(--text3); font-size: 13px; }
+
+  @media (max-width: 400px) {
+    .field-row { grid-template-columns: 1fr; }
+    .choices { gap: 5px; }
+    .choice-btn { padding: 8px 11px; font-size: 12px; }
+    .total-value { font-size: 24px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-badge">Item Analysis</div>
+    <h1>Enter your marks</h1>
+    <p>Select your score for each question. Your total will be calculated as you go.</p>
+  </div>
+
+  <!-- Pupil form -->
+  <div id="formView">
+
+    <!-- Info card -->
+    <div class="card">
+      <div class="card-label">Your details</div>
+      <div class="field-row">
+        <div class="field">
+          <label for="cls">Class</label>
+          <input type="text" id="cls" placeholder="e.g. 4A" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="regno">Reg No</label>
+          <input type="text" id="regno" placeholder="e.g. 23" autocomplete="off">
+        </div>
+      </div>
+    </div>
+
+    <!-- Questions card -->
+    <div class="card">
+      <div class="card-label">Question marks</div>
+      <div id="questionsContainer"></div>
+    </div>
+
+    <!-- Total sticky bar -->
+    <div class="total-card" id="totalCard">
+      <div class="answered-row">
+        <span id="answeredCount">0 of 12 answered</span>
+        <div class="answered-dots" id="answeredDots"></div>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+      <div class="total-top">
+        <div>
+          <div class="total-label">Your total</div>
+          <div class="total-value partial" id="totalValue">0 <span class="denom">/ 25</span></div>
+        </div>
+      </div>
+      <div class="feedback" id="feedback"></div>
+    </div>
+
+    <!-- Submit -->
+    <button class="submit-btn" id="submitBtn" onclick="submitForm()">Submit marks</button>
+
+  </div>
+
+  <!-- Success screen -->
+  <div class="success-screen" id="successView">
+    <div class="success-icon">✓</div>
+    <h2>Marks submitted!</h2>
+    <p>Your marks have been recorded. Check your total below and let your teacher know if something looks wrong.</p>
+    <div class="score-display">
+      <div class="score-num" id="finalScore">0</div>
+      <div class="score-denom">out of 25 marks</div>
+    </div>
+    <br>
+    <button class="again-btn" onclick="resetForm()">Submit again (e.g. correction)</button>
+  </div>
+
+  <!-- Teacher toggle -->
+  <div class="teacher-toggle">
+    <button onclick="toggleTeacher()">Teacher view</button>
+  </div>
+
+  <!-- Teacher panel -->
+  <div class="teacher-panel card" id="teacherPanel">
+    <div class="teacher-header">
+      <h2>Submissions</h2>
+      <div class="t-actions">
+        <button class="t-btn danger" onclick="clearAll()">Clear all</button>
+        <button class="t-btn primary" onclick="downloadExcel()">Download Excel</button>
+      </div>
+    </div>
+    <div class="stats-row">
+      <div class="stat-box"><div class="n" id="statCount">0</div><div class="l">Submitted</div></div>
+      <div class="stat-box"><div class="n" id="statAvg">—</div><div class="l">Average</div></div>
+      <div class="stat-box"><div class="n" id="statTop">—</div><div class="l">Highest</div></div>
+    </div>
+    <div class="entries-table-wrap">
+      <table>
+        <thead>
+          <tr id="tableHead"></tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── Mark scheme ──────────────────────────────────────────────────────────────
+const QUESTIONS = [
+  { n: 'Qn 1',  max: 1,   half: false },
+  { n: 'Qn 2',  max: 1,   half: false },
+  { n: 'Qn 3',  max: 1,   half: true  },
+  { n: 'Qn 4',  max: 1,   half: false },
+  { n: 'Qn 5',  max: 2,   half: true  },
+  { n: 'Qn 6',  max: 2,   half: true  },
+  { n: 'Qn 7',  max: 2,   half: true  },
+  { n: 'Qn 8',  max: 2,   half: true  },
+  { n: 'Qn 9',  max: 2,   half: true  },
+  { n: 'Qn 10', max: 4,   half: true  },
+  { n: 'Qn 11', max: 4,   half: true  },
+  { n: 'Qn 12', max: 3,   half: true  },
+];
+const TOTAL_MAX = QUESTIONS.reduce((s, q) => s + q.max, 0); // 25
+
+function getChoices(q) {
+  const choices = [];
+  if (q.half) {
+    for (let v = 0; v <= q.max; v += 0.5) choices.push(v);
+  } else {
+    for (let v = 0; v <= q.max; v++) choices.push(v);
+  }
+  return choices;
+}
+
+// ── State ────────────────────────────────────────────────────────────────────
+let selected = new Array(QUESTIONS.length).fill(null);
+let entries = [];
+
+try { entries = JSON.parse(localStorage.getItem('ia_v3') || '[]'); } catch(e) {}
+function save() { try { localStorage.setItem('ia_v3', JSON.stringify(entries)); } catch(e) {} }
+
+// ── Build question UI ────────────────────────────────────────────────────────
+function buildQuestions() {
+  const container = document.getElementById('questionsContainer');
+  const dotsContainer = document.getElementById('answeredDots');
+
+  QUESTIONS.forEach((q, qi) => {
+    // Dot
+    const dot = document.createElement('div');
+    dot.className = 'dot';
+    dot.id = `dot${qi}`;
+    dotsContainer.appendChild(dot);
+
+    // Divider (except first)
+    if (qi > 0) {
+      const div = document.createElement('div');
+      div.className = 'section-divider';
+      container.appendChild(div);
+    }
+
+    // Block
+    const block = document.createElement('div');
+    block.className = 'qblock';
+
+    const header = document.createElement('div');
+    header.className = 'q-header';
+
+    const label = document.createElement('div');
+    label.className = 'q-label';
+    label.innerHTML = `${q.n} <span class="q-max">/ ${q.max} mark${q.max > 1 ? 's' : ''}</span>`;
+
+    const sel = document.createElement('div');
+    sel.className = 'q-selected empty';
+    sel.id = `sel${qi}`;
+    sel.textContent = '—';
+
+    header.appendChild(label);
+    header.appendChild(sel);
+    block.appendChild(header);
+
+    const choices = document.createElement('div');
+    choices.className = 'choices';
+
+    getChoices(q).forEach(val => {
+      const btn = document.createElement('button');
+      btn.className = 'choice-btn';
+      btn.textContent = val % 1 === 0 ? val.toString() : val.toString();
+      btn.setAttribute('data-val', val);
+      btn.setAttribute('data-qi', qi);
+      btn.onclick = () => selectMark(qi, val, btn);
+      choices.appendChild(btn);
+    });
+
+    block.appendChild(choices);
+    container.appendChild(block);
+  });
+}
+
+// ── Select a mark ────────────────────────────────────────────────────────────
+function selectMark(qi, val, btn) {
+  selected[qi] = val;
+
+  // Update button states
+  const allBtns = document.querySelectorAll(`[data-qi="${qi}"]`);
+  allBtns.forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+
+  // Update dot
+  const dot = document.getElementById(`dot${qi}`);
+  dot.classList.add('filled');
+
+  // Update selected display
+  const sel = document.getElementById(`sel${qi}`);
+  sel.textContent = val;
+  sel.classList.remove('empty');
+
+  updateTotal();
+}
+
+// ── Update total & feedback ──────────────────────────────────────────────────
+function updateTotal() {
+  const answered = selected.filter(v => v !== null).length;
+  const total = selected.reduce((s, v) => s + (v || 0), 0);
+  const allDone = answered === QUESTIONS.length;
+  const pct = total / TOTAL_MAX;
+
+  // Total display
+  const tv = document.getElementById('totalValue');
+  tv.innerHTML = `${total % 1 === 0 ? total : total.toFixed(1)} <span class="denom">/ ${TOTAL_MAX}</span>`;
+  tv.className = 'total-value ' + (allDone ? 'complete' : 'partial');
+
+  // Progress bar
+  const pf = document.getElementById('progressFill');
+  pf.style.width = (total / TOTAL_MAX * 100).toFixed(1) + '%';
+  pf.className = 'progress-fill' + (allDone ? ' complete' : '');
+
+  // Dots
+  document.querySelectorAll('.dot.filled').forEach(d => {
+    d.classList.toggle('complete', allDone);
+  });
+
+  // Answered count
+  document.getElementById('answeredCount').textContent = `${answered} of ${QUESTIONS.length} answered`;
+
+  // Feedback
+  const fb = document.getElementById('feedback');
+  if (!allDone) {
+    const left = QUESTIONS.length - answered;
+    fb.className = 'feedback show incomplete';
+    fb.textContent = `${left} question${left > 1 ? 's' : ''} still to fill in.`;
+  } else {
+    const pctLabel = Math.round(pct * 100);
+    if (pct >= 0.75) {
+      fb.className = 'feedback show good';
+      fb.textContent = `Total: ${total % 1 === 0 ? total : total.toFixed(1)} / ${TOTAL_MAX} (${pctLabel}%). Does this match your marked paper? If yes, submit!`;
+    } else if (pct >= 0.4) {
+      fb.className = 'feedback show warn';
+      fb.textContent = `Total: ${total % 1 === 0 ? total : total.toFixed(1)} / ${TOTAL_MAX} (${pctLabel}%). Please double-check your marks match your paper before submitting.`;
+    } else {
+      fb.className = 'feedback show warn';
+      fb.textContent = `Total: ${total % 1 === 0 ? total : total.toFixed(1)} / ${TOTAL_MAX} (${pctLabel}%). That's quite low — please check your marks carefully before submitting.`;
+    }
+  }
+
+  // Submit button
+  document.getElementById('submitBtn').disabled = !allDone;
+}
+
+// ── Submit ───────────────────────────────────────────────────────────────────
+function submitForm() {
+  const cls = document.getElementById('cls').value.trim();
+  const regno = document.getElementById('regno').value.trim();
+
+  if (!cls || !regno) {
+    document.getElementById('cls').style.borderColor = cls ? '' : 'var(--danger)';
+    document.getElementById('regno').style.borderColor = regno ? '' : 'var(--danger)';
+    document.getElementById('cls').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return;
+  }
+
+  const total = selected.reduce((s, v) => s + (v || 0), 0);
+  entries.push({ cls, regno, marks: [...selected], total, ts: Date.now() });
+  save();
+
+  document.getElementById('finalScore').textContent = total % 1 === 0 ? total : total.toFixed(1);
+  document.getElementById('formView').style.display = 'none';
+  document.getElementById('successView').classList.add('show');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+
+  renderTeacher();
+}
+
+// ── Reset ────────────────────────────────────────────────────────────────────
+function resetForm() {
+  selected = new Array(QUESTIONS.length).fill(null);
+  document.getElementById('regno').value = '';
+  document.getElementById('cls').style.borderColor = '';
+  document.getElementById('regno').style.borderColor = '';
+
+  document.querySelectorAll('.choice-btn').forEach(b => b.classList.remove('selected'));
+  document.querySelectorAll('.dot').forEach(d => d.classList.remove('filled', 'complete'));
+  QUESTIONS.forEach((_, qi) => {
+    const sel = document.getElementById(`sel${qi}`);
+    sel.textContent = '—';
+    sel.classList.add('empty');
+  });
+
+  document.getElementById('totalValue').innerHTML = `0 <span class="denom">/ ${TOTAL_MAX}</span>`;
+  document.getElementById('totalValue').className = 'total-value partial';
+  document.getElementById('progressFill').style.width = '0%';
+  document.getElementById('progressFill').className = 'progress-fill';
+  document.getElementById('feedback').className = 'feedback';
+  document.getElementById('answeredCount').textContent = `0 of ${QUESTIONS.length} answered`;
+  document.getElementById('submitBtn').disabled = true;
+
+  document.getElementById('formView').style.display = '';
+  document.getElementById('successView').classList.remove('show');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ── Teacher panel ────────────────────────────────────────────────────────────
+function toggleTeacher() {
+  const panel = document.getElementById('teacherPanel');
+  panel.classList.toggle('show');
+  if (panel.classList.contains('show')) renderTeacher();
+}
+
+function renderTeacher() {
+  const count = entries.length;
+  document.getElementById('statCount').textContent = count;
+
+  if (count === 0) {
+    document.getElementById('statAvg').textContent = '—';
+    document.getElementById('statTop').textContent = '—';
+    document.getElementById('tableHead').innerHTML = '';
+    document.getElementById('tableBody').innerHTML = '<tr><td colspan="15" class="empty-state">No submissions yet.</td></tr>';
+    return;
+  }
+
+  const totals = entries.map(e => e.total);
+  const avg = totals.reduce((a, b) => a + b, 0) / count;
+  document.getElementById('statAvg').textContent = avg.toFixed(1);
+  document.getElementById('statTop').textContent = Math.max(...totals).toFixed(1);
+
+  // Table head
+  document.getElementById('tableHead').innerHTML =
+    '<th>Reg No</th><th>Class</th>' +
+    QUESTIONS.map(q => `<th>${q.n}<br><span style="font-weight:400;color:var(--text3)">/${q.max}</span></th>`).join('') +
+    '<th>Total</th>';
+
+  // Table body
+  document.getElementById('tableBody').innerHTML = entries.map(e => {
+    const pct = e.total / TOTAL_MAX;
+    const col = pct >= 0.75 ? 'var(--success)' : pct >= 0.5 ? 'var(--warn)' : 'var(--danger)';
+    return `<tr>
+      <td>${e.regno}</td>
+      <td>${e.cls}</td>
+      ${e.marks.map(m => `<td>${m % 1 === 0 ? m : m.toFixed(1)}</td>`).join('')}
+      <td class="total-td" style="color:${col}">${e.total % 1 === 0 ? e.total : e.total.toFixed(1)}</td>
+    </tr>`;
+  }).join('');
+}
+
+function clearAll() {
+  if (!confirm('Clear all submissions? This cannot be undone.')) return;
+  entries = []; save(); renderTeacher();
+}
+
+// ── Excel download ───────────────────────────────────────────────────────────
+function downloadExcel() {
+  if (entries.length === 0) { alert('No submissions yet.'); return; }
+
+  const cls = entries[0].cls || '';
+  const maxRow = ['', 'Class: ' + cls, ...QUESTIONS.map(q => q.max), TOTAL_MAX];
+  const hdrRow = ['Reg No', 'Class', ...QUESTIONS.map(q => q.n), 'Total'];
+  const dataRows = entries.map(e => [
+    e.regno, e.cls,
+    ...e.marks.map(m => m),
+    e.total
+  ]);
+
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet([maxRow, hdrRow, ...dataRows]);
+
+  ws['!cols'] = [{ wch: 8 }, { wch: 8 }, ...QUESTIONS.map(() => ({ wch: 7 })), { wch: 8 }];
+
+  XLSX.utils.book_append_sheet(wb, ws, 'Item Analysis');
+  XLSX.writeFile(wb, `item_analysis_${cls || 'class'}_${new Date().toISOString().slice(0, 10)}.xlsx`);
+}
+
+// ── Init ─────────────────────────────────────────────────────────────────────
+buildQuestions();
+document.getElementById('submitBtn').disabled = true;
+renderTeacher();
+</script>
+</body>
+</html>
